@@ -1,0 +1,251 @@
+{
+  "Resources": {
+    "DataPipeline": {
+      "Type": "AWS::DataPipeline::Pipeline",
+      "Properties": {
+        "Activate": false,
+        "Description": "",
+        "Name": "${resource_prefix}-dynamo-backup-pipeline",
+        "PipelineObjects": [
+          {
+            "Id": "Default",
+            "Name": "Configuration",
+            "Fields": [
+              {
+                "Key": "type",
+                "StringValue": "Default"
+              },
+              {
+                "Key": "role",
+                "StringValue": "${data-pipeline-role}"
+              },
+              {
+                "Key": "resourceRole",
+                "StringValue": "${data-pipeline-resource-role}"
+              },
+              {
+                "Key": "pipelineLogUri",
+                "StringValue": "${s3_location_for_logs}"
+              },
+              {
+                "Key": "failureAndRerunMode",
+                "StringValue": "CASCADE"
+              },
+              {
+                "Key": "scheduleType",
+                "StringValue": "cron"
+              },
+              {
+                "Key": "schedule",
+                "RefValue": "Schedule"
+              },
+              {
+                "Key": "maximumRetries",
+                "StringValue": "0"
+              }
+            ]
+          },
+          {
+            "Id": "Schedule",
+            "Name": "Schedule",
+            "Fields": [
+              {
+                "Key": "type",
+                "StringValue": "Schedule"
+              },
+              {
+                "Key": "startDateTime",
+                "StringValue": "${start_date_time}"
+              },
+              {
+                "Key": "period",
+                "StringValue": "${period}"
+              }
+            ]
+          },
+          {
+            "Id": "BackupFailedSNS",
+            "Name": "BackupFailedSNS",
+            "Fields": [
+              {
+                "Key" : "role",
+                "StringValue": "${data-pipeline-role}"
+              },
+              {
+                "Key" : "subject",
+                "StringValue": "DynamoDB backup failed"
+              },
+              {
+                "Key" : "message",
+                "StringValue": "DynamoDB backup failed"
+              },
+              {
+                "Key" : "type",
+                "StringValue": "SnsAlarm"
+              },
+              {
+                "Key" : "topicArn",
+                "StringValue": "${sns_arn_backup_failed}"
+              }
+            ]
+          },
+
+          {
+            "Id": "BackupSucceededSNS",
+            "Name": "BackupSucceededSNS",
+            "Fields": [
+              {
+                "Key" : "role",
+                "StringValue": "${data-pipeline-role}"
+              },
+              {
+                "Key" : "subject",
+                "StringValue": "DynamoDB backup succeeded"
+              },
+              {
+                "Key" : "message",
+                "StringValue": "{\"State\" : \"Succeeded\", \"S3FolderForBackup\" : \"${s3_location_for_backup}/#{format(node.@scheduledStartTime, 'YYYY-MM-dd-HH-mm-ss')}\", \"DynamoDBTableName\" : \"${table_to_backup}\"}"
+              },
+              {
+                "Key" : "type",
+                "StringValue": "SnsAlarm"
+              },
+              {
+                "Key" : "topicArn",
+                "StringValue": "${sns_arn_backup_successful}"
+              }
+            ]
+          },
+
+          {
+            "Id": "EmrClusterForBackup",
+            "Name": "EmrClusterForBackup",
+            "Fields": [
+              {
+                "Key" : "subnetId",
+                "StringValue": "${subnet_id}"
+              },
+              {
+                "Key" : "bootstrapAction",
+                "StringValue": "s3://${DDBRegion}.elasticmapreduce/bootstrap-actions/configure-hadoop, --yarn-key-value,yarn.nodemanager.resource.memory-mb=11520,--yarn-key-value,yarn.scheduler.maximum-allocation-mb=11520,--yarn-key-value,yarn.scheduler.minimum-allocation-mb=1440,--yarn-key-value,yarn.app.mapreduce.am.resource.mb=2880,--mapred-key-value,mapreduce.map.memory.mb=5760,--mapred-key-value,mapreduce.map.java.opts=-Xmx4608M,--mapred-key-value,mapreduce.reduce.memory.mb=2880,--mapred-key-value,mapreduce.reduce.java.opts=-Xmx2304m,--mapred-key-value,mapreduce.map.speculative=false"
+              },
+              {
+                "Key" : "maximumRetries",
+                "StringValue": "0"
+              },
+              {
+                "Key" : "keyPair",
+                "StringValue": "${key_pair}"
+              },
+              {
+                "Key" : "coreInstanceCount",
+                "StringValue": "1"
+              },
+              {
+                "Key" : "amiVersion",
+                "StringValue": "3.8.0"
+              },
+              {
+                "Key" : "masterInstanceType",
+                "StringValue": "m1.medium"
+              },
+              {
+                "Key" : "region",
+                "StringValue": "${DDBRegion}"
+              },
+              {
+                "Key" : "type",
+                "StringValue": "EmrCluster"
+              },
+              {
+                "Key" : "terminateAfter",
+                "StringValue": "3 Hours"
+              }
+            ]
+          },
+
+          {
+            "Id": "S3BackupLocation",
+            "Name": "S3BackupLocation",
+            "Fields": [
+              {
+                "Key" : "onFail",
+                "RefValue": "BackupFailedSNS"
+              },
+              {
+                "Key" : "directoryPath",
+                "StringValue": "${s3_location_for_backup}/#{format(@scheduledStartTime, 'YYYY-MM-dd-HH-mm-ss')}"
+              },
+              {
+                "Key" : "type",
+                "StringValue": "S3DataNode"
+              },
+              {
+                "Key" : "onSuccess",
+                "RefValue": "BackupSucceededSNS"
+              }
+            ]
+          },
+
+          {
+            "Id": "TableBackupActivity",
+            "Name": "TableBackupActivity",
+            "Fields": [
+              {
+                "Key" : "output",
+                "RefValue": "S3BackupLocation"
+              },
+              {
+                "Key" : "input",
+                "RefValue": "DDBSourceTable"
+              },
+              {
+                "Key" : "maximumRetries",
+                "StringValue": "0"
+              },
+              {
+                "Key" : "step",
+                "StringValue": "s3://dynamodb-emr-${DDBRegion}/emr-ddb-storage-handler/2.1.0/emr-ddb-2.1.0.jar,org.apache.hadoop.dynamodb.tools.DynamoDbExport,#{output.directoryPath},#{input.tableName},#{input.readThroughputPercent}"
+              },
+              {
+                "Key" : "runsOn",
+                "RefValue": "EmrClusterForBackup"
+              },
+              {
+                "Key" : "type",
+                "StringValue": "EmrActivity"
+              },
+              {
+                "Key" : "resizeClusterBeforeRunning",
+                "StringValue": "true"
+              }
+            ]
+          },
+
+          {
+            "Id": "DDBSourceTable",
+            "Name": "DDBSourceTable",
+            "Fields": [
+              {
+                "Key" : "readThroughputPercent",
+                "StringValue": "${ddb_read_throughput_ratio}"
+              },
+              {
+                "Key" : "type",
+                "StringValue": "DynamoDBDataNode"
+              },
+              {
+                "Key" : "tableName",
+                "StringValue": "${table_to_backup}"
+              }
+            ]
+          }
+        ],
+
+        "ParameterObjects": [],
+        "ParameterValues": [],
+        "PipelineTags": []
+      }
+    }
+  }
+}

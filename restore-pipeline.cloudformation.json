@@ -1,0 +1,258 @@
+{
+  "Resources": {
+    "DataPipeline": {
+      "Type": "AWS::DataPipeline::Pipeline",
+      "Properties": {
+        "Activate": false,
+        "Description": "",
+        "Name": "${resource_prefix}-dynamo-restore-pipeline",
+        "PipelineObjects": [
+          {
+            "Id": "Default",
+            "Name": "Configuration",
+            "Fields": [
+              {
+                "Key": "type",
+                "StringValue": "Default"
+              },
+              {
+                "Key": "role",
+                "StringValue": "${data-pipeline-role}"
+              },
+              {
+                "Key": "resourceRole",
+                "StringValue": "${data-pipeline-resource-role}"
+              },
+              {
+                "Key": "pipelineLogUri",
+                "StringValue": "${s3_location_for_logs}"
+              },
+              {
+                "Key": "failureAndRerunMode",
+                "StringValue": "CASCADE"
+              },
+              {
+                "Key": "scheduleType",
+                "StringValue": "ONDEMAND"
+              },
+              {
+                "Key": "maximumRetries",
+                "StringValue": "0"
+              }
+            ]
+          },
+          {
+            "Id": "EmrClusterForLoad",
+            "Name": "EmrClusterForLoad",
+            "Fields": [
+              {
+                "Key" : "subnetId",
+                "StringValue": "${subnet_id}"
+              },
+              {
+                "Key" : "bootstrapAction",
+
+                "StringValue": "s3://${DDBRegion}.elasticmapreduce/bootstrap-actions/configure-hadoop, --mapred-key-value,mapreduce.map.speculative=false"
+              },
+              {
+                "Key" : "maximumRetries",
+                "StringValue": "0"
+              },
+              {
+                "Key" : "keyPair",
+                "StringValue": "${key_pair}"
+              },
+              {
+                "Key" : "coreInstanceCount",
+                "StringValue": "1"
+              },
+              {
+                "Key" : "amiVersion",
+                "StringValue": "3.9.0"
+              },
+              {
+                "Key" : "masterInstanceType",
+                "StringValue": "m1.medium"
+              },
+              {
+                "Key" : "region",
+                "StringValue": "${DDBRegion}"
+              },
+              {
+                "Key" : "type",
+                "StringValue": "EmrCluster"
+              },
+              {
+                "Key" : "terminateAfter",
+                "StringValue": "3 Hours"
+              }
+            ]
+          },
+          {
+            "Id": "TableLoadActivity",
+            "Name": "TableLoadActivity",
+            "Fields": [
+              {
+                "Key" : "output",
+                "RefValue": "DDBDestinationTable"
+              },
+              {
+                "Key" : "input",
+                "RefValue": "S3InputDataNode"
+              },
+              {
+                "Key" : "step",
+                "StringValue": "s3://dynamodb-emr-${DDBRegion}/emr-ddb-storage-handler/2.1.0/emr-ddb-2.1.0.jar,org.apache.hadoop.dynamodb.tools.DynamoDbImport,#{input.directoryPath},#{output.tableName},#{output.writeThroughputPercent}"
+              },
+              {
+                "Key" : "runsOn",
+                "RefValue": "EmrClusterForLoad"
+              },
+              {
+                "Key" : "type",
+                "StringValue" : "EmrActivity"
+              },
+              {
+                "Key" : "resizeClusterBeforeRunning",
+                "StringValue" : "false"
+              }
+            ]
+          },
+          {
+            "Id": "DDBDestinationTable",
+            "Name": "DDBDestinationTable",
+            "Fields": [
+              {
+                "Key" : "writeThroughputPercent",
+                "StringValue": "${ddb_write_throughput_ratio}"
+              },
+              {
+                "Key" : "type",
+                "StringValue": "DynamoDBDataNode"
+              },
+              {
+                "Key" : "tableName",
+                "StringValue": "#{my_destination_dynamo_table}"
+              },
+              {
+                "Key" : "onFail",
+                "RefValue" : "RestoreFailedSNS"
+              },
+              {
+                "Key" : "onSuccess",
+                "RefValue" : "RestoreSucceededSNS"
+              }
+            ]
+          },
+          {
+            "Id": "S3InputDataNode",
+            "Name": "S3InputDataNode",
+            "Fields": [
+              {
+                "Key" : "type",
+                "StringValue": "S3DataNode"
+              },
+              {
+                "Key" : "directoryPath",
+                "StringValue": "#{my_source_s3_folder}"
+              }
+            ]
+          },
+          {
+            "Id": "RestoreFailedSNS",
+            "Name": "RestoreFailedSNS",
+            "Fields": [
+              {
+                "Key" : "role",
+                "StringValue": "${data-pipeline-role}"
+              },
+              {
+                "Key" : "type",
+                "StringValue": "SnsAlarm"
+              },
+              {
+                "Key" : "subject",
+                "StringValue": "DynamoDB restore failed"
+              },
+              {
+                "Key" : "message",
+                "StringValue" : "DynamoDB restore failed; Go check DataPipeline;"
+              },
+              {
+                "Key" : "topicArn",
+                "StringValue": "${sns_arn_backup_failed}"
+              }
+            ]
+          },
+          {
+            "Id": "RestoreSucceededSNS",
+            "Name": "RestoreSucceededSNS",
+            "Fields": [
+              {
+                "Key" : "role",
+                "StringValue": "${data-pipeline-role}"
+              },
+              {
+                "Key" : "subject",
+                "StringValue": "DynamoDB restore pipeline succeeded"
+              },
+              {
+                "Key" : "message",
+                "StringValue": "{\"State\" : \"Succeeded\", \"OriginalTableName\" : \"${table_to_backup}\", \"RestoredTableName\" : \"#{my_destination_dynamo_table}\" }"
+              },
+              {
+                "Key" : "type",
+                "StringValue": "SnsAlarm"
+              },
+              {
+                "Key" : "topicArn",
+                "StringValue": "${sns_arn_restore_successful}"
+              }
+            ]
+          }
+        ],
+        "ParameterObjects": [
+          {
+            "Id": "my_source_s3_folder",
+            "Attributes" : [
+              {
+                "Key" : "description",
+                "StringValue" : "Input S3 folder"
+              },
+              {
+                "Key" : "type",
+                "StringValue" : "AWS::S3::ObjectKey"
+              }
+            ]
+          },
+          {
+            "Id": "my_destination_dynamo_table",
+            "Attributes" : [
+              {
+                "Key" : "description",
+                "StringValue" : "Destination dynamo table"
+              },
+              {
+                "Key" : "type",
+                "StringValue" : "String"
+              }
+
+            ]
+          }
+        ],
+        "ParameterValues": [
+          {
+            "Id" : "my_source_s3_folder",
+            "StringValue" : "s3://fake_s3_folder"
+          },
+          {
+            "Id" : "my_destination_dynamo_table",
+            "StringValue" : "fake_table"
+          }
+        ],
+        "PipelineTags": [
+        ]
+      }
+    }
+  }
+}
