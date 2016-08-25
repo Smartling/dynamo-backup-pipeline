@@ -6,9 +6,11 @@ import uuid
 
 pipeline_client = boto3.client('datapipeline')
 dynamodb_client = boto3.resource('dynamodb')
+dynamodb_streams = boto3.client('dynamodb')
 
 
 def lambda_handler(event, context):
+    clone_dynamo_table_name = ""
     try:
         print(event)
 
@@ -20,12 +22,13 @@ def lambda_handler(event, context):
         print("s3 folder to get backups from:" + s3folder)
         dynamo_table_name = message['DynamoDBTableName']
         print("dynamo table name:" + dynamo_table_name)
-        clone_dynamo_table_name = dynamo_table_name + "-backup_verification_temp_table-" + str(uuid.uuid4())
 
         pipeline_id = get_pipeline_id_by_name(dynamo_table_name + "-dynamo-restore-pipeline")
         print("found pipeline id:" + pipeline_id)
 
-        clone_dynamo_table(dynamo_table_name, clone_dynamo_table_name)
+        clone_dynamo_table_name = clone_dynamo_table(dynamo_table_name,
+                                                     dynamo_table_name + "-backup_verification_temp_table-" + str(uuid.uuid4()))
+
         response = pipeline_client.activate_pipeline(
             pipelineId=pipeline_id,
             parameterValues=[
@@ -43,6 +46,11 @@ def lambda_handler(event, context):
         return response
     except Exception as e:
         print(e)
+        print("Deleting temp table:", clone_dynamo_table_name)
+        if clone_dynamo_table_name != "":
+            dynamodb_streams.delete_table(
+                TableName=clone_dynamo_table_name
+            )
         raise e
 
 
@@ -67,8 +75,9 @@ def clone_dynamo_table(src_table_name, dst_table_name):
     print("Creating temp dynamoDB table")
     src_table = dynamodb_client.Table(src_table_name)
 
-    del src_table.provisioned_throughput["NumberOfDecreasesToday"]
-    del src_table.provisioned_throughput["LastIncreaseDateTime"]
+    provisioned_throughput = {"ReadCapacityUnits": src_table.provisioned_throughput["ReadCapacityUnits"],
+                              "WriteCapacityUnits": src_table.provisioned_throughput["WriteCapacityUnits"]
+    }
 
     print("Schema:", src_table.key_schema)
     print("Attribute definitions:", src_table.attribute_definitions)
@@ -85,8 +94,9 @@ def clone_dynamo_table(src_table_name, dst_table_name):
         TableName=dst_table_name,
         KeySchema=src_table.key_schema,
         AttributeDefinitions=[key_definition_1, key_definition_2],
-        ProvisionedThroughput=src_table.provisioned_throughput
+        ProvisionedThroughput=provisioned_throughput
     )
 
     # Wait until the table exists.
     dst_table.meta.client.get_waiter('table_exists').wait(TableName=src_table_name)
+    return dst_table_name

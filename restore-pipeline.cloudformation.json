@@ -17,11 +17,11 @@
               },
               {
                 "Key": "role",
-                "StringValue": "${data-pipeline-role}"
+                "StringValue": "${data_pipeline_role}"
               },
               {
                 "Key": "resourceRole",
-                "StringValue": "${data-pipeline-resource-role}"
+                "StringValue": "${data_pipeline_resource_role}"
               },
               {
                 "Key": "pipelineLogUri",
@@ -164,7 +164,7 @@
             "Fields": [
               {
                 "Key" : "role",
-                "StringValue": "${data-pipeline-role}"
+                "StringValue": "${data_pipeline_role}"
               },
               {
                 "Key" : "type",
@@ -190,7 +190,7 @@
             "Fields": [
               {
                 "Key" : "role",
-                "StringValue": "${data-pipeline-role}"
+                "StringValue": "${data_pipeline_role}"
               },
               {
                 "Key" : "subject",

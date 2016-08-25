@@ -56,8 +56,8 @@ resource "template_file" "cf_template_dynamo_backup" {
   template = "${file("${path.module}/backup-pipeline.cloudformation.json")}"
   vars {
     resource_prefix = "${var.dynamo_table_to_backup}"
-    data-pipeline-resource-role = "${aws_iam_instance_profile.dynamo-backup-pipeline-iam-profile.name}"
-    data-pipeline-role = "${aws_iam_role.dynamo-backup-pipeline-role.name}"
+    data_pipeline_resource_role = "${aws_iam_instance_profile.dynamo_backup_pipeline_iam_profile.name}"
+    data_pipeline_role = "${aws_iam_role.dynamo_backup_pipeline_role.name}"
     s3_location_for_logs = "s3://${aws_s3_bucket.backup_logs_bucket.bucket}"
     s3_location_for_backup = "s3://${aws_s3_bucket.backup_bucket.bucket}"
     period = "1 Day"
@@ -76,8 +76,8 @@ resource "template_file" "cf_template_dynamo_restore" {
   template = "${file("${path.module}/restore-pipeline.cloudformation.json")}"
   vars {
     resource_prefix = "${var.dynamo_table_to_backup}"
-    data-pipeline-resource-role = "${aws_iam_instance_profile.dynamo-backup-pipeline-iam-profile.name}"
-    data-pipeline-role = "${aws_iam_role.dynamo-backup-pipeline-role.name}"
+    data_pipeline_resource_role = "${aws_iam_instance_profile.dynamo_backup_pipeline_iam_profile.name}"
+    data_pipeline_role = "${aws_iam_role.dynamo_backup_pipeline_role.name}"
     s3_location_for_logs = "s3://${aws_s3_bucket.backup_logs_bucket.bucket}"
     subnet_id = "${var.dynamo_backup_subnet_id}"
     DDBRegion = "${var.region}"
@@ -89,14 +89,14 @@ resource "template_file" "cf_template_dynamo_restore" {
   }
 }
 
-resource "aws_iam_instance_profile" "dynamo-backup-pipeline-iam-profile" {
+resource "aws_iam_instance_profile" "dynamo_backup_pipeline_iam_profile" {
   name = "${var.dynamo_table_to_backup}-dynamo-backup-pipeline-iam-profile"
-  roles = ["${aws_iam_role.dynamo-backup-pipeline-resource-role.name}"]
+  roles = ["${aws_iam_role.dynamo_backup_pipeline_resource_role.name}"]
 }
 
-resource "aws_iam_role_policy" "dynamo-backup-pipeline-resource-role-policy" {
+resource "aws_iam_role_policy" "dynamo_backup_pipeline_resource_role_policy" {
   name = "${var.dynamo_table_to_backup}-dynamo-backup-pipeline-role-policy"
-  role = "${aws_iam_role.dynamo-backup-pipeline-resource-role.id}"
+  role = "${aws_iam_role.dynamo_backup_pipeline_resource_role.id}"
   policy = <<EOF
 {
   "Version": "2012-10-17",
@@ -125,7 +125,7 @@ resource "aws_iam_role_policy" "dynamo-backup-pipeline-resource-role-policy" {
 EOF
 }
 
-resource "aws_iam_role" "dynamo-backup-pipeline-resource-role" {
+resource "aws_iam_role" "dynamo_backup_pipeline_resource_role" {
   name = "${var.dynamo_table_to_backup}-dynamo-backup-pipeline-resource-role"
   assume_role_policy = <<EOF
 {
@@ -144,9 +144,9 @@ EOF
 }
 
 
-resource "aws_iam_role_policy" "dynamo-backup-pipeline-role-policy" {
+resource "aws_iam_role_policy" "dynamo_backup_pipeline_role_policy" {
   name = "${var.dynamo_table_to_backup}-dynamo-backup-pipeline-policy"
-  role = "${aws_iam_role.dynamo-backup-pipeline-role.id}"
+  role = "${aws_iam_role.dynamo_backup_pipeline_role.id}"
   policy = <<EOF
 {
   "Version": "2012-10-17",
@@ -218,7 +218,7 @@ resource "aws_iam_role_policy" "dynamo-backup-pipeline-role-policy" {
 EOF
 }
 
-resource "aws_iam_role" "dynamo-backup-pipeline-role" {
+resource "aws_iam_role" "dynamo_backup_pipeline_role" {
   name = "${var.dynamo_table_to_backup}-dynamo-backup-pipeline-role"
   assume_role_policy = <<EOF
 {

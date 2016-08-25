@@ -32,7 +32,7 @@ resource "aws_iam_role_policy" "start_verify_restore_lambda_role_policy" {
         {
           "Effect":"Allow",
           "Action":"iam:PassRole",
-          "Resource":"${aws_iam_role.dynamo-backup-pipeline-role.arn}"
+          "Resource":"${aws_iam_role.dynamo_backup_pipeline_role.arn}"
         },
         {
           "Effect": "Allow",
@@ -41,6 +41,11 @@ resource "aws_iam_role_policy" "start_verify_restore_lambda_role_policy" {
                 "dynamodb:CreateTable"
                 ],
           "Resource": "*"
+        },
+        {
+          "Effect": "Allow",
+          "Action": "dynamodb:DeleteTable",
+          "Resource": "arn:aws:dynamodb:${var.region}:${var.account_id}:table/${var.dynamo_table_to_backup}-backup_verification_temp_table*"
         }
     ]
 }
