@@ -60,6 +60,7 @@ EOF
 }
 
 resource "aws_lambda_function" "verify_restore_lambda" {
+  ignore_changes = ["filename", "source_code_hash"]
   depends_on = ["null_resource.verify_restore_lambda_zip_file"]
   filename = "${path.module}/${var.verify_restore_lambda_name}.zip"
   function_name = "${var.dynamo_table_to_backup}-verify_restore_lambda"
