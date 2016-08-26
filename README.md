@@ -2,11 +2,12 @@
 Terraform module to backup dynamo table
 It will back up a target table into s3 bucket daily and run a verification.
 In case of ony failures it will send a notification to  TableName-dynamo-backup-failed sns topic.
-You'll need to subscribe your team email to it to get notified.
+Unfortunately it's impossible to subscribe via terraform,
+so you'll need to subscribe your team  to this topic yourself to get notified.
 
-put this in your tf file to use it:
+To use it put this in your terraform file. Note that you can specify git branch,commit or tag:
 module "dynamo_backup" {
-  source = "git@github.com:Smartling/dynamo-backup-pipeline.git?ref=v1.0"
+  source = "git@github.com:Smartling/dynamo-backup-pipeline.git?ref=<branch|commit|tag>"
   environment_name = "dev"
   dynamo_backup_subnet_id = "subnet-123456789"
   dynamo_table_to_backup = "TableName"
@@ -16,5 +17,5 @@ module "dynamo_backup" {
   key_pair = "ec2-key-pair"
 }
 
-how to restore backup manually:
+To restore a backup:
 start-table-restore-pipeline.sh s3://bucket/2016-08-25-06-00-00 SourceTableName DestinationTableName"

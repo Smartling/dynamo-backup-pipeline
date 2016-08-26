@@ -14,6 +14,16 @@ variable "dynamo_table_to_backup" {
 variable "dynamo_read_throughput_ratio" {
   description = "How much of read throughput you with to dedicate for backups e.g. 0.25 means 25% of provisioned throughput"
 }
+
+variable "dynamo_backup_period" {
+  description = "How often shoud backup run e.g. 1 Day"
+  default = "1 Day"
+}
+
+variable "dynamo_backup_start_date_time" {
+  description = "When should it start e.g. 2016-08-24T06:00:00"
+}
+
 variable "region" {
   description = "aws region e.g. us-east-1"
 }
@@ -60,8 +70,8 @@ resource "template_file" "cf_template_dynamo_backup" {
     data_pipeline_role = "${aws_iam_role.dynamo_backup_pipeline_role.name}"
     s3_location_for_logs = "s3://${aws_s3_bucket.backup_logs_bucket.bucket}"
     s3_location_for_backup = "s3://${aws_s3_bucket.backup_bucket.bucket}"
-    period = "1 Day"
-    start_date_time = "2016-08-24T06:00:00"
+    period = "${var.dynamo_backup_period}"
+    start_date_time = "${var.dynamo_backup_start_date_time}"
     subnet_id = "${var.dynamo_backup_subnet_id}"
     DDBRegion = "${var.region}"
     key_pair = "${var.key_pair}"

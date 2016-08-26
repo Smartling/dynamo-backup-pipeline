@@ -3,7 +3,7 @@
     "DataPipeline": {
       "Type": "AWS::DataPipeline::Pipeline",
       "Properties": {
-        "Activate": false,
+        "Activate": true,
         "Description": "",
         "Name": "${resource_prefix}-dynamo-backup-pipeline",
         "PipelineObjects": [
