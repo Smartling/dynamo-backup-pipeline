@@ -3,10 +3,13 @@ from __future__ import print_function
 import json
 import boto3
 import uuid
+import time
 
 pipeline_client = boto3.client('datapipeline')
 dynamodb_client = boto3.resource('dynamodb')
 dynamodb_streams = boto3.client('dynamodb')
+
+TARGET_RESTORE_TIME_SECONDS = 30 * 60
 
 
 def lambda_handler(event, context):
@@ -27,7 +30,8 @@ def lambda_handler(event, context):
         print("found pipeline id:" + pipeline_id)
 
         clone_dynamo_table_name = clone_dynamo_table(dynamo_table_name,
-                                                     dynamo_table_name + "-backup_verification_temp_table-" + str(uuid.uuid4()))
+                                                     dynamo_table_name + "-backup_verification_temp_table-"
+                                                     + str(uuid.uuid4()))
 
         response = pipeline_client.activate_pipeline(
             pipelineId=pipeline_id,
@@ -48,9 +52,19 @@ def lambda_handler(event, context):
         print(e)
         print("Deleting temp table:", clone_dynamo_table_name)
         if clone_dynamo_table_name != "":
-            dynamodb_streams.delete_table(
-                TableName=clone_dynamo_table_name
-            )
+            tries = 3
+            while tries > 0:
+                tries -= 1
+                try:
+                    dynamodb_streams.delete_table(
+                        TableName=clone_dynamo_table_name
+                    )
+                    print("deleted successfully")
+                    break
+                except Exception as deleteException:
+                    print(deleteException)
+                    print("failed to delete table, retrying in 10 seconds...")
+                    time.sleep(10)
         raise e
 
 
@@ -75,13 +89,14 @@ def clone_dynamo_table(src_table_name, dst_table_name):
     print("Creating temp dynamoDB table")
     src_table = dynamodb_client.Table(src_table_name)
 
+    required_write_throughput = src_table.item_count / TARGET_RESTORE_TIME_SECONDS
     provisioned_throughput = {"ReadCapacityUnits": src_table.provisioned_throughput["ReadCapacityUnits"],
-                              "WriteCapacityUnits": src_table.provisioned_throughput["WriteCapacityUnits"]
-    }
+                              "WriteCapacityUnits": required_write_throughput
+                              }
 
     print("Schema:", src_table.key_schema)
     print("Attribute definitions:", src_table.attribute_definitions)
-    print("Provisioned throughput:", src_table.provisioned_throughput)
+    print("Provisioned throughput:", provisioned_throughput)
 
     key_name_1 = src_table.key_schema[0]['AttributeName']
     key_name_2 = src_table.key_schema[1]['AttributeName']
