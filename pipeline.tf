@@ -24,6 +24,10 @@ variable "dynamo_backup_start_date_time" {
   description = "When should it start e.g. 2016-08-24T06:00:00"
 }
 
+variable "dynamo_failed_backup_sns_topic" {
+  description = "SNS topic name to send failure notifications to"
+}
+
 variable "region" {
   description = "aws region e.g. us-east-1"
 }
@@ -49,7 +53,7 @@ resource "aws_sns_topic" "sns_restore_successful" {
 }
 
 resource "aws_sns_topic" "sns_backup_failed" {
-  name = "${var.dynamo_table_to_backup}-dynamo-backup-failed"
+  name = "${var.dynamo_failed_backup_sns_topic}"
 }
 
 resource "aws_cloudformation_stack" "cf_dynamo_backup_pipeline" {
