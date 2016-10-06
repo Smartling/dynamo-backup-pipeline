@@ -111,3 +111,19 @@ resource "aws_sns_topic_subscription" "start_restore_verification_lambda_subscri
   protocol  = "lambda"
   endpoint  = "${aws_lambda_function.start_verify_restore_lambda.arn}"
 }
+
+resource "aws_cloudwatch_metric_alarm" "verify_restore_lambda_fails_alarm" {
+  alarm_name = "${var.dynamo_table_to_backup}-DynamoStartRestoreVerificationFailedAlarm"
+  comparison_operator = "GreaterThanOrEqualToThreshold"
+  evaluation_periods = "1"
+  metric_name = "Errors"
+  namespace = "AWS/Lambda"
+  period = "60"
+  statistic = "Average"
+  threshold = "1"
+  dimensions {
+    FunctionName = "${aws_lambda_function.start_verify_restore_lambda.function_name}"
+  }
+  alarm_description = "Restore fails"
+  alarm_actions = ["${aws_sns_topic.sns_backup_failed.arn}"]
+}
