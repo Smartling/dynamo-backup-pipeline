@@ -89,7 +89,7 @@ def clone_dynamo_table(src_table_name, dst_table_name):
     print("Creating temp dynamoDB table")
     src_table = dynamodb_client.Table(src_table_name)
 
-    required_write_throughput = src_table.item_count / TARGET_RESTORE_TIME_SECONDS
+    required_write_throughput = max(1, src_table.item_count / TARGET_RESTORE_TIME_SECONDS)
     provisioned_throughput = {"ReadCapacityUnits": src_table.provisioned_throughput["ReadCapacityUnits"],
                               "WriteCapacityUnits": required_write_throughput
                               }
