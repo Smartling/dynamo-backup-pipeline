@@ -112,7 +112,7 @@ resource "aws_sns_topic_subscription" "start_restore_verification_lambda_subscri
   endpoint  = "${aws_lambda_function.start_verify_restore_lambda.arn}"
 }
 
-resource "aws_cloudwatch_metric_alarm" "verify_restore_lambda_fails_alarm" {
+resource "aws_cloudwatch_metric_alarm" "start_verify_restore_ambda_fails_alarm" {
   alarm_name = "${var.dynamo_table_to_backup}-DynamoStartRestoreVerificationFailedAlarm"
   comparison_operator = "GreaterThanOrEqualToThreshold"
   evaluation_periods = "1"
