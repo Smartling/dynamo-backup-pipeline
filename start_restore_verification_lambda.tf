@@ -84,7 +84,7 @@ resource "aws_lambda_function" "start_verify_restore_lambda" {
   handler = "${var.start_restore_verification_lambda_name}.lambda_handler"
   source_code_hash = "${base64sha256(file("${path.module}/${var.start_restore_verification_lambda_name}.zip"))}"
   runtime = "python2.7"
-  timeout = "3"
+  timeout = "10"
   memory_size = "128"
 }
 
