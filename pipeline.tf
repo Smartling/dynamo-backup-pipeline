@@ -58,15 +58,15 @@ resource "aws_sns_topic" "sns_backup_failed" {
 
 resource "aws_cloudformation_stack" "cf_dynamo_backup_pipeline" {
   name = "${var.dynamo_table_to_backup}-dynamo-backup-cf-stack-${var.environment_name}"
-  template_body = "${template_file.cf_template_dynamo_backup.rendered}"
+  template_body = "${data.template_file.cf_template_dynamo_backup.rendered}"
 }
 
 resource "aws_cloudformation_stack" "cf_dynamo_restore_pipeline" {
   name = "${var.dynamo_table_to_backup}-dynamo-restore-cf-stack-${var.environment_name}"
-  template_body = "${template_file.cf_template_dynamo_restore.rendered}"
+  template_body = "${data.template_file.cf_template_dynamo_restore.rendered}"
 }
 
-resource "template_file" "cf_template_dynamo_backup" {
+data "template_file" "cf_template_dynamo_backup" {
   template = "${file("${path.module}/backup-pipeline.cloudformation.json")}"
   vars {
     resource_prefix = "${var.dynamo_table_to_backup}"
@@ -86,7 +86,7 @@ resource "template_file" "cf_template_dynamo_backup" {
   }
 }
 
-resource "template_file" "cf_template_dynamo_restore" {
+data "template_file" "cf_template_dynamo_restore" {
   template = "${file("${path.module}/restore-pipeline.cloudformation.json")}"
   vars {
     resource_prefix = "${var.dynamo_table_to_backup}"
