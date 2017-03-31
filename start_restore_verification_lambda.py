@@ -99,16 +99,21 @@ def clone_dynamo_table(src_table_name, dst_table_name):
     print("Provisioned throughput:", provisioned_throughput)
 
     key_name_1 = src_table.key_schema[0]['AttributeName']
-    key_name_2 = src_table.key_schema[1]['AttributeName']
     key_definition_1 = get_key_definition(src_table.attribute_definitions, key_name_1)
-    key_definition_2 = get_key_definition(src_table.attribute_definitions, key_name_2)
     print(key_definition_1)
-    print(key_definition_2)
+
+    attribute_definitions = [key_definition_1]
+
+    if len(src_table.key_schema) > 1:
+        key_name_2 = src_table.key_schema[1]['AttributeName']
+        key_definition_2 = get_key_definition(src_table.attribute_definitions, key_name_2)
+        attribute_definitions.append(key_definition_2)
+        print(key_definition_2)
 
     dst_table = dynamodb_client.create_table(
         TableName=dst_table_name,
         KeySchema=src_table.key_schema,
-        AttributeDefinitions=[key_definition_1, key_definition_2],
+        AttributeDefinitions=attribute_definitions,
         ProvisionedThroughput=provisioned_throughput
     )
 
