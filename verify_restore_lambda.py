@@ -2,6 +2,7 @@ from __future__ import print_function
 
 import json
 import boto3
+from boto3.dynamodb.types import TypeDeserializer
 
 dynamodb_client = boto3.resource('dynamodb')
 dynamodb_streams = boto3.client('dynamodb')
@@ -78,12 +79,11 @@ def get_scan_iterator(table_name, hash_name, range_name):
 # item_to_get format {u'id': {u'S': u'2'}}
 def is_item_exists(table, item_to_get):
     print("getting item:", item_to_get)
-
+    deserializer = TypeDeserializer()
     response = table.get_item(
         Key={
-            item_to_get.keys()[0]: item_to_get.values()[0].values()[0],
-            item_to_get.keys()[1]: item_to_get.values()[1].values()[0]
-        },
+            k: deserializer.deserialize(v) for k, v in item_to_get.iteritems()
+            },
         AttributesToGet=[
             'id'
         ],
