@@ -72,17 +72,11 @@ EOF
 }
 
 resource "aws_lambda_function" "start_verify_restore_lambda" {
-  lifecycle {
-    ignore_changes = [
-      "filename",
-      "source_code_hash"]
-  }
-  depends_on = ["null_resource.start_restore_verification_lambda_zip_file"]
-  filename = "${path.module}/${var.start_restore_verification_lambda_name}.zip"
+  filename = "${substr(data.archive_file.start_restore_verification_lambda_lambda_zip.output_path, length(path.cwd) + 1, -1)}"
   function_name = "${var.dynamo_table_to_backup}-${var.start_restore_verification_lambda_name}"
   role = "${aws_iam_role.start_verify_restore_lambda_role.arn}"
   handler = "${var.start_restore_verification_lambda_name}.lambda_handler"
-  source_code_hash = "${base64sha256(file("${path.module}/${var.start_restore_verification_lambda_name}.zip"))}"
+  source_code_hash = "${data.archive_file.start_restore_verification_lambda_lambda_zip.output_base64sha256}"
   runtime = "python2.7"
   timeout = "10"
   memory_size = "128"
@@ -92,10 +86,10 @@ variable "start_restore_verification_lambda_name" {
   default = "start_restore_verification_lambda"
 }
 
-resource "null_resource" "start_restore_verification_lambda_zip_file" {
-  provisioner "local-exec" {
-    command = "rm ${path.module}/${var.start_restore_verification_lambda_name}.zip; zip ${path.module}/${var.start_restore_verification_lambda_name}.zip ${path.module}/${var.start_restore_verification_lambda_name}.py -j"
-  }
+data "archive_file" "start_restore_verification_lambda_lambda_zip" {
+  type        = "zip"
+  source_dir  = "${path.module}/source"
+  output_path = "${path.module}/${var.start_restore_verification_lambda_name}.zip"
 }
 
 resource "aws_lambda_permission" "start_restore_verification_lambda_sns_permissions" {
