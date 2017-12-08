@@ -2,6 +2,7 @@ from __future__ import print_function
 
 import json
 import boto3
+import traceback
 from boto3.dynamodb.types import TypeDeserializer
 
 dynamodb_client = boto3.resource('dynamodb')
@@ -50,8 +51,8 @@ def lambda_handler(event, context):
 
         return "Success"
     except Exception as e:
-        print(e)
-        raise e
+        print(traceback.format_exc())
+        raise Exception('Had to stop ecxecution because of error: ', e)
     finally:
         print("Deleting temp table:", restored_table_name)
         if restored_table_name != "":
