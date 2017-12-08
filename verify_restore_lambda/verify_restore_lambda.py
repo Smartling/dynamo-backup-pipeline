@@ -34,13 +34,11 @@ def lambda_handler(event, context):
 
         attribute_names = [hash_name]
 
-        if len(src_table.key_schema) > 1:
+        if len(restored_table.key_schema) > 1:
             range_name = get_attribute_name(restored_table.key_schema, 'RANGE')
             attribute_names.append(range_name)
-            print(key_definition_2)
-
         
-        print("attribute_names:{}".format(attribute_names))
+        print("attribute_names: {}".format(attribute_names))
 
         print("Scanning tables")
         original_table_iterator = get_scan_iterator(original_table_name, attribute_names)
