@@ -2,6 +2,7 @@ from __future__ import print_function
 
 import json
 import boto3
+import traceback
 from boto3.dynamodb.types import TypeDeserializer
 
 dynamodb_client = boto3.resource('dynamodb')
@@ -30,11 +31,17 @@ def lambda_handler(event, context):
 
         restored_table = dynamodb_client.Table(restored_table_name)
         hash_name = get_attribute_name(restored_table.key_schema, 'HASH')
-        range_name = get_attribute_name(restored_table.key_schema, 'RANGE')
-        print("hash_name:{} range_name:{}".format(hash_name, range_name))
+
+        attribute_names = [hash_name]
+
+        if len(restored_table.key_schema) > 1:
+            range_name = get_attribute_name(restored_table.key_schema, 'RANGE')
+            attribute_names.append(range_name)
+        
+        print("attribute_names: {}".format(attribute_names))
 
         print("Scanning tables")
-        original_table_iterator = get_scan_iterator(original_table_name, hash_name, range_name)
+        original_table_iterator = get_scan_iterator(original_table_name, attribute_names)
         mismatch_count = 0
         total_count = 0
         for item_list in original_table_iterator:
@@ -50,8 +57,8 @@ def lambda_handler(event, context):
 
         return "Success"
     except Exception as e:
-        print(e)
-        raise e
+        print(traceback.format_exc())
+        raise Exception('Had to stop ecxecution because of error: ', e)
     finally:
         print("Deleting temp table:", restored_table_name)
         if restored_table_name != "":
@@ -60,12 +67,10 @@ def lambda_handler(event, context):
             )
 
 
-def get_scan_iterator(table_name, hash_name, range_name):
+def get_scan_iterator(table_name, attribute_names):
     src_paginator = dynamodb_streams.get_paginator('scan').paginate(
         TableName=table_name,
-        AttributesToGet=[
-            hash_name, range_name
-        ],
+        AttributesToGet=attribute_names,
         Select='SPECIFIC_ATTRIBUTES',
         ReturnConsumedCapacity='TOTAL',
         PaginationConfig={

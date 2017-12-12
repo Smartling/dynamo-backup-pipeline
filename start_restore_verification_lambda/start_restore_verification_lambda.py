@@ -4,6 +4,7 @@ import json
 import boto3
 import uuid
 import time
+import traceback
 
 pipeline_client = boto3.client('datapipeline')
 dynamodb_client = boto3.resource('dynamodb')
@@ -49,7 +50,7 @@ def lambda_handler(event, context):
         print("pipeline started")
         return response
     except Exception as e:
-        print(e)
+        print(traceback.format_exc())
         print("Deleting temp table:", clone_dynamo_table_name)
         if clone_dynamo_table_name != "":
             tries = 3
@@ -65,7 +66,7 @@ def lambda_handler(event, context):
                     print(deleteException)
                     print("failed to delete table, retrying in 10 seconds...")
                     time.sleep(10)
-        raise e
+        raise Exception('Had to stop ecxecution because of error: ', e)
 
 
 def get_pipeline_id_by_name(name):
